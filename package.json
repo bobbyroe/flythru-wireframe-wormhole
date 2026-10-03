@@ -1,0 +1,26 @@
+{
+  "name": "wormhole",
+  "version": "1.0.0",
+  "description": "Watch the tutorial on [YouTube](https://youtu.be/w_ku0HjutZI)",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zvezdny/wormhole.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/zvezdny/wormhole/issues"
+  },
+  "homepage": "https://github.com/zvezdny/wormhole#readme",
+  "dependencies": {
+    "lil-gui": "^0.21.0",
+    "three": "^0.186.1",
+    "vite": "^8.3.2"
+  }
+}

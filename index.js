@@ -1,22 +1,24 @@
-import * as THREE from "three";
-import { OrbitControls } from 'jsm/controls/OrbitControls.js';
-import spline from "./spline.js";
-import { EffectComposer } from "jsm/postprocessing/EffectComposer.js";
-import { RenderPass } from "jsm/postprocessing/RenderPass.js";
-import { UnrealBloomPass } from "jsm/postprocessing/UnrealBloomPass.js";
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import spline from './spline.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
+import GUI from 'lil-gui';
 
+const gui = new GUI()
 const w = window.innerWidth;
 const h = window.innerHeight;
 const scene = new THREE.Scene();
 scene.fog = new THREE.FogExp2(0x000000, 0.3);
-const camera = new THREE.PerspectiveCamera(75, w / h, 0.1, 1000);
-camera.position.z = 5;
+const camera = new THREE.PerspectiveCamera(95, w / h, 0.1, 1000);
+camera.position.z = 10;
 const renderer = new THREE.WebGLRenderer();
 renderer.setSize(w, h);
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 document.body.appendChild(renderer.domElement);
-
+//
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.dampingFactor = 0.03;
@@ -25,29 +27,81 @@ controls.dampingFactor = 0.03;
 const renderScene = new RenderPass(scene, camera);
 const bloomPass = new UnrealBloomPass(new THREE.Vector2(w, h), 1.5, 0.4, 100);
 bloomPass.threshold = 0.002;
-bloomPass.strength = 3.5;
-bloomPass.radius = 0;
+bloomPass.strength = 1;
+bloomPass.radius = 0.1;
 const composer = new EffectComposer(renderer);
 composer.addPass(renderScene);
 composer.addPass(bloomPass);
 
 // create a line geometry from the spline
-const points = spline.getPoints(100);
+const points = spline.getPoints(1000);
 const geometry = new THREE.BufferGeometry().setFromPoints(points);
-const material = new THREE.LineBasicMaterial({ color: 0xff0000 });
-const line = new THREE.Line(geometry, material);
-// scene.add(line);
+const materialSpline = new THREE.LineBasicMaterial({ color: 0xff0000 });
+const line = new THREE.Line(geometry, materialSpline);
+scene.add(line);
 
 // create a tube geometry from the spline
-const tubeGeo = new THREE.TubeGeometry(spline, 222, 0.65, 16, true);
+const tubeGeo = new THREE.TubeGeometry(spline, 222, 1, 16, true);
+
+// particles
+const params = {
+  count: 20000,
+  size: 0.05,
+  spread: 60,
+  autoRotate: false,
+  autoRotateSpeed: 0.2,
+}
+
+let particles = null
+
+const texture = new THREE.TextureLoader().load(`${import.meta.env.BASE_URL}particles/1.png`)
+texture.colorSpace = THREE.SRGBColorSpace
+
+const materialParticle = new THREE.PointsMaterial({
+  size: params.size,
+  sizeAttenuation: true,
+  map: texture,
+  transparent: true,
+  depthWrite: false,
+  blending: THREE.AdditiveBlending,
+  vertexColors: true,
+})
+
+function buildParticles() {
+  if (particles) {
+    particles.geometry.dispose()
+    scene.remove(particles)
+  }
+
+  const positions = new Float32Array(params.count * 3)
+  const colors = new Float32Array(params.count * 3)
+
+
+  for (let i = 0; i < params.count * 3; i++) {
+    positions[i] = (Math.random() - 0.5) * params.spread
+    colors[i] = Math.random()
+
+  }
+
+  const geometry = new THREE.BufferGeometry().setFromPoints(points)
+  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3))
+  geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3))
+
+  particles = new THREE.Points(geometry, materialParticle)
+  scene.add(particles)
+}
+
+buildParticles()
+
 
 // create edges geometry from the spline
-const edges = new THREE.EdgesGeometry(tubeGeo, 0.2);
+const edges = new THREE.EdgesGeometry(tubeGeo, 0.001);
 const lineMat = new THREE.LineBasicMaterial({ color: 0xff0000 });
 const tubeLines = new THREE.LineSegments(edges, lineMat);
 scene.add(tubeLines);
 
-const numBoxes = 55;
+// boxes
+const numBoxes = 67;
 const size = 0.075;
 const boxGeo = new THREE.BoxGeometry(size, size, size);
 for (let i = 0; i < numBoxes; i += 1) {
@@ -73,12 +127,12 @@ for (let i = 0; i < numBoxes; i += 1) {
   const boxLines = new THREE.LineSegments(edges, lineMat);
   boxLines.position.copy(pos);
   boxLines.rotation.set(rote.x, rote.y, rote.z);
-  // scene.add(box);
-  scene.add(boxLines);
+  scene.add(box);
+  // scene.add(boxLines);
 }
 
 function updateCamera(t) {
-  const time = t * 0.1;
+  const time = t * 0.15;
   const looptime = 10 * 1000;
   const p = (time % looptime) / looptime;
   const pos = tubeGeo.parameters.path.getPointAt(p);
@@ -94,6 +148,8 @@ function animate(t = 0) {
   controls.update();
 }
 animate();
+
+// resize
 
 function handleWindowResize() {
   camera.aspect = window.innerWidth / window.innerHeight;
